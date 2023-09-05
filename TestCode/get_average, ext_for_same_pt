@@ -1,0 +1,128 @@
+from openpyxl import load_workbook
+from openpyxl import Workbook
+from openpyxl.utils.cell import coordinate_from_string
+import datetime
+
+def find_rc_no(workbook, sheet_name, search_value): #CHECKED
+    #store a list of coordinates containing search_value
+    #outputs ["A1", "A2"]
+    workbook.active = workbook[sheet_name]
+    sheet = workbook.active
+    coordinate_list = []
+    for row in sheet.rows:
+        for cell in row:
+            if cell.value == search_value:
+                coordinate_list.append(cell.coordinate)
+    return coordinate_list
+  
+def get_data(workbook, sheet_name, search_value): #CHECKED
+    #store the list of data (will determine if data stored vertically or horizontally)
+    #elements have type: openpyxl.cell.cell.Cell
+    #hori_vert = 0 means horizontal, if = 1, vertical
+    #outputs [[A2, A3, A4], [B2, B3, B4]] if search_value is found at A1 and B1
+    coordinate_list = find_rc_no(workbook, sheet_name, search_value)  
+    workbook.active = workbook[sheet_name]
+    workbook0 = workbook.active
+    outputlist = []
+    for coor in coordinate_list:
+        if coor == "A1" :
+            rc = input("Is the data stored horizontally or vertically?")
+            if rc == 'horizontally':
+                output = workbook0["1"]
+                hori_vert = 0
+            else:
+                output = workbook0["A"]
+                hori_vert = 1
+        elif coordinate_from_string(coor)[0] == "A" : #data is stored in horizontal manner
+            output = workbook0[coordinate_from_string(coor)[1]]
+            #to account for very large column values too
+            hori_vert = 0
+        else:
+            output = workbook0[coordinate_from_string(coor)[0]]
+            hori_vert = 1
+        outputlist.append(output)
+    return hori_vert, outputlist
+
+def ext_for_same_pt(ref_list, workbook, sheet, param_name_list):
+    #ref_list should exclude header
+    #param_name_list is a list of parameters (str) to be extracted
+    #Based on the ref_list, the values of multiple parameters for the same sample point are extracted
+    #[[ref data A, param A1, param A2], [ref data B, param B1, param B2]]
+    output = []
+    same_pt_params = []
+    for data in ref_list:
+        for ref_param_name in param_name_list:
+            hori_vert, param_list = get_data(workbook, sheet, ref_param_name)
+            if hori_vert == 0:
+                for ref_param in param_list:
+                    for ref_pt in ref_param:
+                        
+                        if coordinate_from_string(data.coordinate)[0] == coordinate_from_string(ref_pt.coordinate)[0]:
+                            output.append(ref_pt.value)
+                            break
+            else:
+                for ref_param in param_list:
+                    for ref_pt in ref_param:
+                        if coordinate_from_string(data.coordinate)[1] == coordinate_from_string(ref_pt.coordinate)[1]:
+                            output.append(ref_pt.value) 
+                            break
+      
+            if type(data.value) == datetime.datetime:
+                ref_val = data.value.strftime("%d/%m/%Y, %H:%M:%S")
+            else:
+                ref_val = data.value
+        output.insert(0, ref_val)
+        same_pt_params.append(output)              
+        output = []
+    return same_pt_params
+    #OUTPUT same_pt_params = [['02/02/2024, 00:00:00', 2, 20],['02/02/2024, 00:00:00', 3, 21],['02/02/2024, 00:00:00', 5, 23],['06/02/2024, 00:00:00', 4, 16],['06/02/2024, 00:00:00', 5, 15], ['09/02/2024, 00:00:00', 5, 10],['09/02/2024, 00:00:00', 1, 11]]
+
+    
+def get_average(average_list, workbook, sheet, param_name_list):
+    #outputs [[ref_value, 2.5], [ref_value1,1]], where 2.5 and 1 are the average values of eg A6, A7, A8 and A20, A21 respectively
+    data = ext_for_same_pt(average_list, workbook, sheet, param_name_list)
+    #data = [[A1, param B1, param C1], [A2, param B2, param C2]...]
+    number = 0
+    next_param = 0
+    output = []
+    
+    addition = 0
+    for i in range(1,len(data[0])):
+        distinct_no = 0
+        same_ref = data[0][0]
+        prev_n = 0
+        for n, params_for_same_pt in enumerate(data):
+            if params_for_same_pt[0] != same_ref:
+                number = n - prev_n
+                ave_val = addition / number
+                if next_param != 1:
+                    output.append([same_ref, ave_val])
+                else:
+                    output[distinct_no ].append(ave_val)
+                    distinct_no = distinct_no + 1
+                    
+                same_ref = params_for_same_pt[0]
+                prev_n = n
+                addition = 0
+            if params_for_same_pt[0] == same_ref:
+                addition = params_for_same_pt[i] + addition
+                if n == (len(data) - 1): #to account for the last value in data
+                    number = len(data) - prev_n
+                    ave_val = addition / number
+                    if next_param != 1:
+                        output.append([same_ref, ave_val])
+                    else:
+                        output[distinct_no ].append(ave_val)
+                        distinct_no = distinct_no + 1
+                    addition = 0
+            
+        next_param = 1
+    return output
+
+workbook = load_workbook(r'#directory')
+sheet = "Sheet1"
+workbook.active = workbook[sheet]
+workbook0 = workbook.active
+ave = [workbook0["A3"], workbook0["A2"], workbook0["A4"], workbook0["A11"], workbook0["A10"],workbook0["G5"], workbook0["G4"]]
+output = get_average(ave, workbook, sheet, ["#reference parameter"])
+
