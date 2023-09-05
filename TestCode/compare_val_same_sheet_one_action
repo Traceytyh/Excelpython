@@ -1,0 +1,199 @@
+from openpyxl import load_workbook
+from openpyxl import Workbook
+from openpyxl.utils.cell import coordinate_from_string
+import datetime
+
+workbook = load_workbook(r'#directory of test')
+
+def find_rc_no(workbook, sheet_name, search_value): 
+    #store a list of coordinates containing search_value
+    workbook.active = workbook[sheet_name]
+    sheet = workbook.active
+    coordinate_list = []
+    for row in sheet.rows:
+        for cell in row:
+            if cell.value == search_value:
+                coordinate_list.append(cell.coordinate)
+    return coordinate_list
+  
+def get_data(workbook, sheet_name, search_value): 
+    #store the list of data (will determine if data stored vertically or horizontally)
+    #elements have type: openpyxl.cell.cell.Cell
+    #hori_vert = 0 means horizontal, if = 1, vertical
+    #outputs [[A2, A3, A4], [B2, B3, B4]] if search_value is found at A1 and B1
+    coordinate_list = find_rc_no(workbook, sheet_name, search_value)  
+    workbook.active = workbook[sheet_name]
+    workbook0 = workbook.active
+    outputlist = []
+    for coor in coordinate_list:
+        if coor == "A1" :
+            rc = input("Is the data stored horizontally or vertically?")
+            if rc == 'horizontally':
+                output = workbook0["1"]
+                hori_vert = 0
+            else:
+                output = workbook0["A"]
+                hori_vert = 1
+        elif coordinate_from_string(coor)[0] == "A" : #data is stored in horizontal manner
+            output = workbook0[coordinate_from_string(coor)[1]]
+            #to account for very large column values too
+            hori_vert = 0
+        else:
+            output = workbook0[coordinate_from_string(coor)[0]]
+            hori_vert = 1
+        outputlist.append(output)
+    return hori_vert, outputlist
+
+def get_input(output, prompt):
+    #Asks user for input until 'done' is inserted
+    value = input(prompt)
+    while value != 'done':
+        output.append(value)
+        value = input()
+
+def getdate(date_str):
+    #outputs a [day, month, year], regardless of date input type
+    if type(date_str) == str: 
+        formats_to_try = [
+            "%d/%m/%Y",  # DD/MM/YYYY
+            "%d-%m-%Y",  # DD-MM-YYYY
+            "%m/%d/%Y",  # MM/DD/YYYY
+            "%m-%d-%Y",  # MM-DD-YYYY
+            "%Y/%m/%d",  # YYYY/MM/DD
+            "%Y-%m-%d",  # YYYY-MM-DD
+            "%d/%m/%Y %H:%M",  # DD/MM/YYYY
+            "%d-%m-%Y %H:%M",  # DD-MM-YYYY
+            "%m/%d/%Y %H:%M",  # MM/DD/YYYY
+            "%m-%d-%Y %H:%M",  # MM-DD-YYYY
+            "%Y/%m/%d %H:%M",  # YYYY/MM/DD
+            "%Y-%m-%d %H:%M",  # YYYY-MM-DD
+            "%d/%m/%Y %H:%M:%S",  # DD/MM/YYYY
+            "%d-%m-%Y %H:%M:%S",  # DD-MM-YYYY
+            "%m/%d/%Y %H:%M:%S",  # MM/DD/YYYY
+            "%m-%d-%Y %H:%M:%S",  # MM-DD-YYYY
+            "%Y/%m/%d %H:%M:%S",  # YYYY/MM/DD
+            "%Y-%m-%d %H:%M:%S",  # YYYY-MM-DD
+            ]
+        for date_format in formats_to_try:
+            try:
+                date = datetime.datetime.strptime(date_str, date_format)
+                return date.day, date.month, date.year
+            except ValueError:
+                pass
+            #if date := datetime.datetime.strptime(date_str, date_format):
+                #return date.day, date.month, date.year
+        return None, None, None
+    elif type(date_str) == datetime.datetime:
+        return date_str.day, date_str.month, date_str.year
+    
+
+
+ref_param = #list of str containing reference parameters
+sheet = "Sheet1"
+ref_list = []
+
+if type(ref_param) == str:
+    ref_list = get_data(workbook, sheet, ref_param)[1]
+elif type(ref_param) == list: 
+    for ref_param_name in ref_param:
+        ref_list.append(get_data(workbook, sheet, ref_param_name)[1][0])
+#ref_list is the data to be compared [[A2, A3, A4], [B2, B3, B4]]
+
+def data_from_cell(cell_list): #CHECKED
+    #inputs a list containing type openpyxl.cell.cell [<Cell 'Sheet1'.G1>, <Cell 'Sheet1'.G2>]
+    #outputs the data within each cell ['FIT16617 Time', '04/14/2023 7:00']
+    data_list = []
+    for cell in cell_list:
+        data_list.append(cell.value)
+    return data_list
+
+def data_with_cell(cell_list): #CHECKED
+    #inputs a list containing type openpyxl.cell.cell [<Cell 'Sheet1'.G1>, <Cell 'Sheet1'.G2>]
+    #outputs the data within each cell [[<Cell 'Sheet1'.G1>, 'FIT16617 Time'], [<Cell 'Sheet1'.G2>,'04/14/2023 7:00']]
+    data_list = []
+    for cell in cell_list:
+        data_list.append([cell, cell.value])
+    return data_list
+
+#account for repeated
+unique_list = []
+removed_common_all = []
+average = []
+same_data_for_average = []
+action = input("Do you want to 'R'-remove both, 'F' - keep the former, 'L' - keep the latter or 'A' - obtain the average ore repeated values? ")
+for ref_data in ref_list:
+    unique_cell = []
+    unique_value = []
+    unique_data = []
+    combined_data = []
+    removed_common = []
+    combined_data = data_with_cell(ref_data)
+    for data in combined_data:
+        
+        if data[1]!=None: #if there are blanks in the excel
+            if data[1] not in unique_value and data[1] not in removed_common:
+                #unique value is seen
+                unique_value.append(data[1])
+                unique_cell.append(data[0])
+                unique_data.append(data)
+            elif data[1] not in unique_value and data[1] in removed_common:
+                #repeated value with previously repeated values removed
+                removed_common.append(data[1])
+            else:
+                #repeated values
+                if data[1] not in same_data_for_average:
+                    found_index = unique_value.index(data[1])
+                    if action == "R":
+                        removed_common.extend([data[1], unique_value[found_index]])
+                        unique_value.remove(unique_value[found_index])
+                        unique_cell.remove(unique_cell[found_index])
+                        unique_data.remove(unique_data[found_index])
+                    elif action == "F":
+                        removed_common.append(data[1])
+                    elif action == "L":
+                        removed_common.append(unique_value[found_index])
+                        unique_value.remove(unique_value[found_index])
+                        unique_cell.remove(unique_cell[found_index])
+                        unique_data.remove(unique_data[found_index])
+                        unique_value.append(data[1])
+                        unique_cell.append(data[0])
+                        unique_data.append(data)
+                    elif action == "A":
+                        removed_common.append(data[1])
+                        same_data_for_average.extend([data[1], unique_value[found_index]])
+                        average.extend([data[0], unique_cell[found_index]])
+                else:
+                    removed_common.append(data[1])
+                    same_data_for_average.append(data[1])
+                    average.append(data[0])
+    unique_list.append(unique_cell)
+    removed_common_all.append(removed_common)
+    
+ref_list = unique_list  
+#output unique_list and average_list
+#average_list contains [A1, A2, A3, A5, A6, C1, C2, C3], where elements are openpyxl.cell.cell, A1, A2, A3 are the same values  -> used to find the corresponding sample points to be averaged
+                
+temp_list =[]
+datebol = input("Is the reference parameter 'date'? (Y/N)")
+for ref in ref_list[0]: 
+    temp_list.append([ref]) 
+    #temp_list = [[A1], [A2], [A3]] 
+
+for i in range(1, len(ref_list)):
+    new_temp_list = []
+    for ref in ref_list[i]:
+        if datebol == 'Y':
+            ref_val = getdate(ref.value)[1]
+        else:
+            ref_val = ref.value
+        for same in temp_list:
+            if datebol == 'Y':
+                same_val = getdate(same[0].value)[1]
+            else:
+                same_val = same[0].value
+            if same_val == ref_val:
+                same.append(ref)## 
+                new_temp_list.append(same)
+                break #reduce computational power
+    
+    temp_list = new_temp_list
