@@ -7,6 +7,7 @@ The final code makes use of some of the functions, where users are able to type 
 
 *Usage of the function, `Special cases flagged to user, ~Assumptions made
 |Function| 	What it does |
+|--------|---------------|
 |find_rc_no(workbook, sheet_name, search_value)	|Searches for a value and returns its coordinates as a string
 *Used to find headers. Outputs a list in case the same header is repeated in the same sheet|
 |Get_data(workbook, sheet_name, search_value)|	Takes a header value and returns the entire row/column of the data with its header and whether the data is horizontal or vertical
