@@ -1,0 +1,40 @@
+#Test for find_rc and get_data
+
+from openpyxl import load_workbook
+from openpyxl import Workbook
+from openpyxl.utils.cell import coordinate_from_string
+import datetime
+
+workbook = load_workbook(r'#directory of test workbook')
+sheet_name = "Sheet1"
+
+workbook.active = workbook[sheet_name]
+sheet = workbook.active
+coordinate_list = []
+
+search_value = #str of value to be searched
+
+for row in sheet.rows:
+    for cell in row:
+        if cell.value == search_value:
+            coordinate_list.append(cell.coordinate)
+
+outputlist = []
+for coor in coordinate_list:
+    if coor == "A1" :
+        rc = input("Is the data stored horizontally or vertically?")
+        if rc == 'horizontally':
+            output = sheet["1"]
+            hori_vert = 0
+        else:
+            output = sheet["A"]
+            hori_vert = 1
+    elif coordinate_from_string(coor)[0] == "A" : #data is stored in horizontal manner
+        output = sheet[coordinate_from_string(coor)[1]]
+        #to account for very large column values too
+        hori_vert = 0
+    else:
+        output = sheet[coordinate_from_string(coor)[0]]
+        hori_vert = 1
+    outputlist.append(output)
+print(hori_vert, coordinate_list)
