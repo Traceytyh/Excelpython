@@ -1,0 +1,180 @@
+from openpyxl import load_workbook
+from openpyxl import Workbook
+from openpyxl.utils.cell import coordinate_from_string
+import datetime
+import openpyxl
+from pathlib import Path
+
+def find_rc_no(workbook, sheet_name, search_value): #CHECKED
+    #store a list of coordinates containing search_value
+    #outputs ["A1", "A2"]
+    workbook.active = workbook[sheet_name]
+    sheet = workbook.active
+    coordinate_list = []
+    for row in sheet.rows:
+        for cell in row:
+            if cell.value == search_value:
+                coordinate_list.append(cell.coordinate)
+    return coordinate_list
+  
+def get_data(workbook, sheet_name, search_value): #CHECKED
+    #store the list of data (will determine if data stored vertically or horizontally)
+    #elements have type: openpyxl.cell.cell.Cell
+    #hori_vert = 0 means horizontal, if = 1, vertical
+    #outputs [[A2, A3, A4], [B2, B3, B4]] if search_value is found at A1 and B1
+    coordinate_list = find_rc_no(workbook, sheet_name, search_value)  
+    workbook.active = workbook[sheet_name]
+    workbook0 = workbook.active
+    outputlist = []
+    #global hori_vert
+    for coor in coordinate_list:
+        if coor == "A1" :
+            rc = input(f"Is the data in {sheet_name} stored horizontally or vertically?")
+            if rc == 'horizontally':
+                output = workbook0["1"]
+                hori_vert = 0
+            else:
+                output = workbook0["A"]
+                hori_vert = 1
+        elif coordinate_from_string(coor)[0] == "A" : #data is stored in horizontal manner
+            output = workbook0[coordinate_from_string(coor)[1]]
+            #to account for very large column values too
+            hori_vert = 0
+        else:
+            output = workbook0[coordinate_from_string(coor)[0]]
+            hori_vert = 1
+        outputlist.append(output)
+    return hori_vert, outputlist
+def getdate(date_str):#CHECKED
+    #outputs a [day, month, year], regardless of date input type
+    if type(date_str) == str: 
+        formats_to_try = [
+            "%d/%m/%Y",  # DD/MM/YYYY
+            "%d-%m-%Y",  # DD-MM-YYYY
+            "%m/%d/%Y",  # MM/DD/YYYY
+            "%m-%d-%Y",  # MM-DD-YYYY
+            "%Y/%m/%d",  # YYYY/MM/DD
+            "%Y-%m-%d",  # YYYY-MM-DD
+            "%d/%m/%Y %H:%M",  # DD/MM/YYYY
+            "%d-%m-%Y %H:%M",  # DD-MM-YYYY
+            "%m/%d/%Y %H:%M",  # MM/DD/YYYY
+            "%m-%d-%Y %H:%M",  # MM-DD-YYYY
+            "%Y/%m/%d %H:%M",  # YYYY/MM/DD
+            "%Y-%m-%d %H:%M",  # YYYY-MM-DD
+            "%d/%m/%Y %H:%M:%S",  # DD/MM/YYYY
+            "%d-%m-%Y %H:%M:%S",  # DD-MM-YYYY
+            "%m/%d/%Y %H:%M:%S",  # MM/DD/YYYY
+            "%m-%d-%Y %H:%M:%S",  # MM-DD-YYYY
+            "%Y/%m/%d %H:%M:%S",  # YYYY/MM/DD
+            "%Y-%m-%d %H:%M:%S",  # YYYY-MM-DD
+            ]
+        for date_format in formats_to_try:
+            try:
+                date = datetime.datetime.strptime(date_str, date_format)
+                return date.day, date.month, date.year
+            except ValueError:
+                pass
+            #if date := datetime.datetime.strptime(date_str, date_format):
+                #return date.day, date.month, date.year
+        return None, None, None
+    elif type(date_str) == datetime.datetime:
+        return date_str.day, date_str.month, date_str.year
+    
+def merge_same_index(list0, list1): 
+#merge data in same index of both list into new list
+    new_element = []
+    new_list = []
+    temp_list0 = []
+    temp_list1 = []
+    if type(list0[0])!=list:
+        for val in list0:
+            temp_list0.append([val]) 
+    else: 
+        temp_list0 = list0
+    if type(list1[0])!=list:
+        for val in list1:
+            temp_list1.append([val]) 
+    else: 
+        temp_list1 = list1
+        
+    none = (None,)*(len(temp_list0[0])+len(temp_list1[0])) #make tuple with None n times
+        
+    if len(temp_list0) > len(temp_list1):
+        new_list_len = len(temp_list0)
+    else:
+        new_list_len = len(temp_list1)
+        
+    for i in range(new_list_len):
+        new_element = list(none)
+        try:
+            new_element[0:len(temp_list0[0])] = temp_list0[i]
+        except:
+            pass
+        try:
+            new_element[-len(temp_list1[0]):] = temp_list1[i]
+        except:
+            pass
+        new_list.append(new_element)
+    return new_list
+
+def separate_list (input_list): #CHECKED
+    #input_list = [[A1, B1, C2], [A2, B2, C3]...]
+    #output = [[A1, A2..], [B1, B2..], [C2, C3..]]
+    output = []
+    for i in range(len(input_list[0])):
+        temp0 = []
+        for val in input_list:
+            temp0.append(val[i])
+        output.append(temp0)
+    return output
+
+def extract_data(input_list):
+    for x, value in enumerate(input_list):
+        for y, element in enumerate(value):
+            if type(element) == openpyxl.cell.cell.Cell:
+                input_list[x][y] = element.value
+            else:
+                pass
+    return input_list
+
+def keep_if_specific_val (data_list, param_index_list, value_list):
+    #data_list is after it has been extracted, with data in vertical form [[para1a, para2a, para3a], [para1b, para2, para3b]...]
+    #the param_index_list must correspond to index in the value_list
+    for data in data_list[:]:#Used [:] which makes a copy, as python has an inbuilt function that skips elements in a for loop if the list is altered
+        print("data: ", data)
+        for i, param_index in enumerate(param_index_list):
+            if data[param_index] != value_list[i]:
+                data_list.remove(data)
+                
+                print("removed")
+                break
+            else:
+                pass
+                print("pass")
+            
+    return data_list
+
+directory = #add str for directory of book1
+wb = load_workbook(directory)
+
+output = []
+
+for val in ["Sampling point", "Parameter 1", "Parameter 2", "Time"]:
+    raw_output = get_data(wb, "Sheet1", val)[1]
+    raw_output = separate_list(raw_output)
+    new_output = extract_data(raw_output) #in case output contain openpyxl.cell.cell.Cell, they will be converted into strings for appending into excel
+    if output != []:
+        output = merge_same_index(output, new_output)
+    else: 
+        output = new_output
+        
+print(output)
+
+param_list = ['Parameter 1', 'Time']
+value_list = ['C', '8:00']
+param_index_list = []
+for param in param_list:
+    param_index_list.append(output[0].index(param))
+new_output = keep_if_specific_val(output[1:], param_index_list, value_list)
+new_output.insert(0, output[0]) 
+output = new_output
