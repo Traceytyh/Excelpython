@@ -1,0 +1,147 @@
+def merge_same_index_oldv0(list0, list1):
+    #list must have same no of index [[list0[0], list1[0]], [list0[1], list1[1]]]
+    if len(list0)==len(list1):
+        for i in range(len(list1)):
+            list0[i].extend(list1[i]) #does not add eg [1, 2, [3, 4]], but adds only the element at the end 
+    elif len(list0) > len(list1): 
+        for i in range(len(list0)):
+            try:
+                list0[i].extend(list1[i]) 
+            except: 
+                list0[i].extend(None) 
+    else: 
+        for i in range(len(list1)):
+            try:
+                list0[i].insert(0, list1[i]) 
+            except: 
+                list0.append([None, list1[i]])
+    return list0
+
+
+def merge_same_index_old(list0, list1): #WRONG!
+    #merge data in same index of both list into new list
+    #list must have same no of index [[list0[0], list1[0]], [list0[1], list1[1]]]
+    temp_list = []
+    temp_list1 = []
+    if type(list0[0])!=list:
+    	for val in list0[0]: #Uses the first list of data as a reference
+        	temp_list.append([val]) 
+    else: 
+        temp_list = list0
+    print(temp_list)
+    if type(list1[0])!=list:
+    	for val in list1[0]: #Uses the first list of data as a reference
+        	temp_list1.append([val]) 
+    else: 
+        temp_list1 = list1
+    print(temp_list1)    
+        
+    if len(list0)==len(list1):
+        for i in range(len(list1)):
+            temp_list[i].extend(list1[i]) #does not add eg [1, 2, [3, 4]], but adds only the element at the end 
+        return temp_list
+    elif len(list0) > len(list1): 
+        for i in range(len(list0)):
+            try:
+                temp_list[i].extend(list1[i]) 
+            except: 
+                temp_list[i].extend(None) 
+        return temp_list
+    else: 
+        for i in range(len(list1)):
+            try:
+                temp_list1[i].extend(temp_list[i]) 
+            except: 
+                temp_list1.append([None, list1[i]])
+        return temp_list1
+    
+def merge_same_index_oldv1(list0, list1): #WRONG! need to make tuple
+    #merge data in same index of both list into new list
+    #list must have same no of index [[list0[0], list1[0]], [list0[1], list1[1]]]
+    temp_element = []
+    new_element = []
+    new_list = []
+    temp_list0 = []
+    temp_list1 = []
+    if type(list0[0])!=list:
+    	for val in list0:
+        	temp_list0.append([val]) 
+    else: 
+        temp_list0 = list0
+    if type(list1[0])!=list:
+    	for val in list1: 
+        	temp_list1.append([val]) 
+    else: 
+        temp_list1 = list1
+        
+    for i in range(len(temp_list0[0])+len(temp_list1[0])):
+        temp_element.append(None)
+        
+    if len(temp_list0) > len(temp_list1):
+        new_list_len = len(temp_list0)
+    else:
+        new_list_len = len(temp_list1)
+        
+    for i in range(new_list_len):
+        new_element = temp_element
+        try:
+            new_element[0:len(temp_list0)] = temp_list0[i]
+        except:
+            pass
+        try:
+            new_element[-len(temp_list1):] = temp_list1[i]
+        except:
+            pass
+        new_list.append(new_element)
+    return new_list
+
+    
+#list0 = [['a', 'b'], ['c', 'd']]
+#list1 = ['1', '2', '3']
+
+#print(merge_same_index(list0, list1))
+
+list0 = ['a', 'b', 'c', 'd']
+list1 = [['1', '2', '3']]
+
+temp_element = []
+none = () #tuple
+new_element = []
+new_list = []
+temp_list0 = []
+temp_list1 = []
+if type(list0[0])!=list:
+    for val in list0:
+        temp_list0.append([val]) 
+else: 
+    temp_list0 = list0
+if type(list1[0])!=list:
+    for val in list1:
+        temp_list1.append([val]) 
+else: 
+    temp_list1 = list1
+    
+none = (None,)*(len(temp_list0[0])+len(temp_list1[0])) #make tuple with None n times
+    
+if len(temp_list0) > len(temp_list1):
+    new_list_len = len(temp_list0)
+else:
+    new_list_len = len(temp_list1)
+    
+for i in range(new_list_len):
+    new_element = list(none)
+    print('ori: ' , new_element)
+    try:
+        new_element[0:len(temp_list0[0])] = temp_list0[i]
+        print('1: ' , new_element)
+    except:
+        print('pass')
+        pass
+    try:
+        new_element[-len(temp_list1[0]):] = temp_list1[i]
+        print('2: ' , new_element)
+    except:
+        print('pass')
+        pass
+    new_list.append(new_element)
+    print("new_list: " , new_list)
