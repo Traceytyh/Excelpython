@@ -11,13 +11,14 @@ Inputs:
 4)	If matching of certain data is needed (arranging data by dates), to state which parameters are to be compared
 
 The code has to identify:
-1)	Identify if the data is written horizontally or vertically
-2)	If there is a repetition of parameters within a sheet
-3)	Function:
-a.	Make data unique, by removing repeated values or obtaining an average
-b.	Compare a reference parameter to get data for the same sampling point
-c.	Compile average for a same date
-d.	Extract other data for the same sampling point
+1.	Identify if the data is written horizontally or vertically
+2.	If there is a repetition of parameters within a sheet
+3.	Function:
+    1. Make data unique, by removing repeated values or obtaining an average
+    2. Compare a reference parameter to get data for the same sampling point
+    3. Compile average for a same date
+    4. Extract other data for the same sampling point
+
 
 *Usage of the function, `Special cases flagged to user, ~Assumptions made
 |Function| 	What it does |
