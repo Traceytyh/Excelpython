@@ -1,0 +1,226 @@
+from openpyxl import load_workbook
+from openpyxl import Workbook
+from openpyxl.utils.cell import coordinate_from_string
+import datetime
+
+book1 = load_workbook(r'#directory of book1 excel')
+book2 = load_workbook(r'#directory of book2 excel')
+
+
+def find_rc_no(workbook, sheet_name, search_value): 
+    #store a list of coordinates containing search_value
+    workbook.active = workbook[sheet_name]
+    sheet = workbook.active
+    coordinate_list = []
+    for row in sheet.rows:
+        
+        for cell in row:
+            
+            if cell.value == search_value:
+                
+                coordinate_list.append(cell.coordinate)
+    return coordinate_list
+  
+def get_data(workbook, sheet_name, search_value): 
+    #store the list of data (will determine if data stored vertically or horizontally)
+    #elements have type: openpyxl.cell.cell.Cell
+    #hori_vert = 0 means horizontal, if = 1, vertical
+    #outputs [[A2, A3, A4], [B2, B3, B4]] if search_value is found at A1 and B1
+    coordinate_list = find_rc_no(workbook, sheet_name, search_value) 
+    workbook.active = workbook[sheet_name]
+    workbook0 = workbook.active
+    outputlist = []
+    for coor in coordinate_list:
+        if coor == "A1" :
+            rc = input("Is the data stored horizontally or vertically?")
+            if rc == 'horizontally':
+                output = workbook0["1"]
+                hori_vert = 0
+            else:
+                output = workbook0["A"]
+                hori_vert = 1
+        elif coordinate_from_string(coor)[0] == "A" : #data is stored in horizontal manner
+            output = workbook0[coordinate_from_string(coor)[1]]
+            #to account for very large column values too
+            hori_vert = 0
+        else:
+            output = workbook0[coordinate_from_string(coor)[0]]
+            hori_vert = 1
+        outputlist.append(output)
+    return hori_vert, outputlist
+
+def get_input(output, prompt):
+    #Asks user for input until 'done' is inserted
+    value = input(prompt)
+    while value != 'done':
+        output.append(value)
+        value = input()
+
+def getdate(date_str):
+    #outputs a [day, month, year], regardless of date input type
+    if type(date_str) == str: 
+        formats_to_try = [
+            "%d/%m/%Y",  # DD/MM/YYYY
+            "%d-%m-%Y",  # DD-MM-YYYY
+            "%m/%d/%Y",  # MM/DD/YYYY
+            "%m-%d-%Y",  # MM-DD-YYYY
+            "%Y/%m/%d",  # YYYY/MM/DD
+            "%Y-%m-%d",  # YYYY-MM-DD
+            "%d/%m/%Y %H:%M",  # DD/MM/YYYY
+            "%d-%m-%Y %H:%M",  # DD-MM-YYYY
+            "%m/%d/%Y %H:%M",  # MM/DD/YYYY
+            "%m-%d-%Y %H:%M",  # MM-DD-YYYY
+            "%Y/%m/%d %H:%M",  # YYYY/MM/DD
+            "%Y-%m-%d %H:%M",  # YYYY-MM-DD
+            "%d/%m/%Y %H:%M:%S",  # DD/MM/YYYY
+            "%d-%m-%Y %H:%M:%S",  # DD-MM-YYYY
+            "%m/%d/%Y %H:%M:%S",  # MM/DD/YYYY
+            "%m-%d-%Y %H:%M:%S",  # MM-DD-YYYY
+            "%Y/%m/%d %H:%M:%S",  # YYYY/MM/DD
+            "%Y-%m-%d %H:%M:%S",  # YYYY-MM-DD
+            ]
+        for date_format in formats_to_try:
+            try:
+                date = datetime.datetime.strptime(date_str, date_format)
+                return date.day, date.month, date.year
+            except ValueError:
+                pass
+            #if date := datetime.datetime.strptime(date_str, date_format):
+                #return date.day, date.month, date.year
+        return None, None, None
+    elif type(date_str) == datetime.datetime:
+        return date_str.day, date_str.month, date_str.year
+    
+def data_from_cell(cell_list): #CHECKED
+    #inputs a list containing type openpyxl.cell.cell [<Cell 'Sheet1'.G1>, <Cell 'Sheet1'.G2>]
+    #outputs the data within each cell ['FIT16617 Time', '04/14/2023 7:00']
+    data_list = []
+    for cell in cell_list:
+        data_list.append(cell.value)
+    return data_list
+
+def data_with_cell(cell_list): #CHECKED
+    #inputs a list containing type openpyxl.cell.cell [<Cell 'Sheet1'.G1>, <Cell 'Sheet1'.G2>]
+    #outputs the data within each cell [[<Cell 'Sheet1'.G1>, 'FIT16617 Time'], [<Cell 'Sheet1'.G2>,'04/14/2023 7:00']]
+    data_list = []
+    for cell in cell_list:
+        data_list.append([cell, cell.value])
+    return data_list
+
+def compare_val_multi(ref_param, wb_sheet_list):
+    #input wb_sheet_list = [[wb1, s1], [wb2, s2], ...]
+    #compare data under the same header (which is distinct within a sheet)
+    #if same value, the cell in the ref_workbook and workbook are both kept in a list
+    #store in type: openpyxl.cell.cell.Cell 
+    
+    ref_list = get_data(wb_sheet_list[0][0], wb_sheet_list[0][1], ref_param)[1]
+    for wb_sheet in (wb_sheet_list[1:]):
+        final_list = []
+        ori_list = get_data(wb_sheet[0], wb_sheet[1], ref_param)[1]
+        datebol = input("Is the reference parameter 'date'? (Y/N)")
+        for ref_data in ref_list[0]:
+            if datebol == 'Y':
+                if type(ref_data) == list:
+                    try:
+                        ref_val = getdate(ref_data[0].value)[1]
+                    except:
+                        ref_val = ref_data[0].value
+                else:
+                    try:
+                        ref_val = getdate(ref_data.value)[1]
+                    except:
+                        ref_val = ref_data.value
+            else:
+                if type(ref_data) == list:
+                    ref_val = ref_data[0].value
+                else:
+                    ref_val = ref_data.value  
+            for ori_data in ori_list[0]:
+                if datebol == 'Y':
+                    try:
+                        ori_val = getdate(ori_data.value)[1]
+                    except:
+                        ori_val = ori_data.value
+                else:
+                    ori_val = ori_data.value
+                if ori_val == ref_val:
+                    if wb_sheet == wb_sheet_list[1]:
+                        final_list.append([ref_data, ori_data])
+                    else:
+                        temp = ref_data
+                        temp.append(ori_data)
+                        final_list.append(temp)
+                    break #values under header is distinct, so no need to continue if value found
+        ref_list = []
+        ref_list.append(final_list)
+    return final_list
+
+def separate_list (input_list): #CHECKED
+    #input_list = [[A1, B1, C2], [A2, B2, C3]...]
+    #output = [[A1, A2..], [B1, B2..], [C2, C3..]]
+    output = []
+    for i in range(len(input_list[0])):
+        temp0 = []
+        for val in input_list:
+            temp0.append(val[i])
+        output.append(temp0)
+    return output
+def ext_for_same_pt(ref_list, workbook, sheet, param_name_list):#CHECKED
+    #ref_list should exclude header
+    #param_name_list is a list of parameters (str) to be extracted
+    #Based on the ref_list, the values of multiple parameters for the same sample point are extracted
+    #[[ref data A, param A1, param A2], [ref data B, param B1, param B2]]
+    output = []
+    same_pt_params = []
+    for data in ref_list:
+        print('data', data)
+        for ref_param_name in param_name_list:
+            hori_vert, param_list = get_data(workbook, sheet, ref_param_name)
+            print("hori", hori_vert)
+            print("Param list:", param_list)
+            if hori_vert == 0:
+                for ref_param in param_list:
+                    print("ref_param", ref_param)
+                    for ref_pt in ref_param:
+                        
+                        if coordinate_from_string(data.coordinate)[0] == coordinate_from_string(ref_pt.coordinate)[0]:
+                            output.append(ref_pt.value)
+                            print("append ref_pt", ref_pt)
+                            break
+                            
+            else:
+                for ref_param in param_list:
+                    print("ref_param", ref_param)
+                    for ref_pt in ref_param:
+                        
+                        if coordinate_from_string(data.coordinate)[1] == coordinate_from_string(ref_pt.coordinate)[1]:
+                            output.append(ref_pt.value) 
+                            print("append ref_pt", ref_pt)
+                            break
+      
+            if type(data.value) == datetime.datetime:
+                ref_val = data.value.strftime("%d/%m/%Y, %H:%M:%S")
+            else:
+                ref_val = data.value
+        output.insert(0, ref_val)
+        same_pt_params.append(output)              
+        output = []
+    return same_pt_params
+    #OUTPUT same_pt_params = [['02/02/2024, 00:00:00', 2, 20],['02/02/2024, 00:00:00', 3, 21],['02/02/2024, 00:00:00', 5, 23],['06/02/2024, 00:00:00', 4, 16],['06/02/2024, 00:00:00', 5, 15], ['09/02/2024, 00:00:00', 5, 10],['09/02/2024, 00:00:00', 1, 11]]
+
+
+workbook = [book1, book2]
+sheet = "Sheet1"
+ref_list = []
+
+wb_sheet_list = []
+Filename_list = []
+ref_param = 'Sampling point'
+wb_sheet_list = [[book1, sheet], [book2, sheet]]
+all_ref_list = compare_val_multi(ref_param, wb_sheet_list)
+split = separate_list(all_ref_list)
+#split.reverse()
+for i, ref_list in enumerate(split):
+    param_name_list = [input("para?")]
+    data = ext_for_same_pt(ref_list, wb_sheet_list[i][0], wb_sheet_list[i][1], param_name_list)
+    print('data',data)
