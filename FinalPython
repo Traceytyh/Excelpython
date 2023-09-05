@@ -1,0 +1,665 @@
+from openpyxl import load_workbook
+from openpyxl import Workbook
+from openpyxl.utils.cell import coordinate_from_string
+import datetime
+import openpyxl
+from pathlib import Path
+ 
+#headers have to be along A or along 1
+#data is always output in a vertical manner
+#If comparing time ("%d/%m/%Y %H:%M"), it is not considered as date and the same time written in different formats is not accounted for
+
+#None values within the table will be ignored
+
+def find_rc_no(workbook, sheet_name, search_value): #CHECKED
+    #store a list of coordinates containing search_value
+    #outputs ["A1", "A2"]
+    workbook.active = workbook[sheet_name]
+    sheet = workbook.active
+    coordinate_list = []
+    for row in sheet.rows:
+        for cell in row:
+            if cell.value == search_value:
+                coordinate_list.append(cell.coordinate)
+    return coordinate_list
+  
+def get_data(workbook, sheet_name, search_value): #CHECKED
+    #store the list of data (will determine if data stored vertically or horizontally)
+    #elements have type: openpyxl.cell.cell.Cell
+    #hori_vert = 0 means horizontal, if = 1, vertical
+    #outputs [[A2, A3, A4], [B2, B3, B4]] if search_value is found at A1 and B1
+    coordinate_list = find_rc_no(workbook, sheet_name, search_value)  
+    workbook.active = workbook[sheet_name]
+    workbook0 = workbook.active
+    outputlist = []
+    #global hori_vert
+    for coor in coordinate_list:
+        if coor == "A1" :
+            rc = input(f"Is the data in {sheet_name} stored horizontally or vertically?")
+            if rc == 'horizontally':
+                output = workbook0["1"]
+                hori_vert = 0
+            else:
+                output = workbook0["A"]
+                hori_vert = 1
+        elif coordinate_from_string(coor)[0] == "A" : #data is stored in horizontal manner
+            output = workbook0[coordinate_from_string(coor)[1]]
+            #to account for very large column values too
+            hori_vert = 0
+        else:
+            output = workbook0[coordinate_from_string(coor)[0]]
+            hori_vert = 1
+        outputlist.append(output)
+    return hori_vert, outputlist
+
+
+def get_input(prompt): #CHECKED
+    #Asks user for input until 'done' is inserted'
+    output = []
+    value = input(prompt)
+    while value != 'done':
+        output.append(value)
+        value = input()
+    return output
+
+def getdate(date_str):#CHECKED
+    #outputs a [day, month, year], regardless of date input type
+    if type(date_str) == str: 
+        formats_to_try = [
+            "%d/%m/%Y",  # DD/MM/YYYY
+            "%d-%m-%Y",  # DD-MM-YYYY
+            "%m/%d/%Y",  # MM/DD/YYYY
+            "%m-%d-%Y",  # MM-DD-YYYY
+            "%Y/%m/%d",  # YYYY/MM/DD
+            "%Y-%m-%d",  # YYYY-MM-DD
+            "%d/%m/%Y %H:%M",  # DD/MM/YYYY
+            "%d-%m-%Y %H:%M",  # DD-MM-YYYY
+            "%m/%d/%Y %H:%M",  # MM/DD/YYYY
+            "%m-%d-%Y %H:%M",  # MM-DD-YYYY
+            "%Y/%m/%d %H:%M",  # YYYY/MM/DD
+            "%Y-%m-%d %H:%M",  # YYYY-MM-DD
+            "%d/%m/%Y %H:%M:%S",  # DD/MM/YYYY
+            "%d-%m-%Y %H:%M:%S",  # DD-MM-YYYY
+            "%m/%d/%Y %H:%M:%S",  # MM/DD/YYYY
+            "%m-%d-%Y %H:%M:%S",  # MM-DD-YYYY
+            "%Y/%m/%d %H:%M:%S",  # YYYY/MM/DD
+            "%Y-%m-%d %H:%M:%S",  # YYYY-MM-DD
+            ]
+        for date_format in formats_to_try:
+            try:
+                date = datetime.datetime.strptime(date_str, date_format)
+                return date.day, date.month, date.year
+            except ValueError:
+                pass
+            #if date := datetime.datetime.strptime(date_str, date_format):
+                #return date.day, date.month, date.year
+        return None, None, None
+    elif type(date_str) == datetime.datetime:
+        return date_str.day, date_str.month, date_str.year
+    
+def datetime_to_str(date): #CHECKED <<< USE strftime("%m/%d/%Y, %H:%M:%S")
+    #convert datetime into str format (cannot append datetime values into excel)
+    date_str = str(date[0]) + "/" + str(date[1]) +"/" + str(date[2])
+    return date_str
+
+def merge_same_index(list0, list1): 
+    #merge data in same index of both list into new list
+    new_element = []
+    new_list = []
+    temp_list0 = []
+    temp_list1 = []
+    if type(list0[0])!=list:
+        for val in list0:
+            temp_list0.append([val]) 
+    else: 
+        temp_list0 = list0
+    if type(list1[0])!=list:
+        for val in list1:
+            temp_list1.append([val]) 
+    else: 
+        temp_list1 = list1
+        
+    none = (None,)*(len(temp_list0[0])+len(temp_list1[0])) #make tuple with None n times
+        
+    if len(temp_list0) > len(temp_list1):
+        new_list_len = len(temp_list0)
+    else:
+        new_list_len = len(temp_list1)
+        
+    for i in range(new_list_len):
+        new_element = list(none)
+        try:
+            new_element[0:len(temp_list0[0])] = temp_list0[i]
+        except:
+            pass
+        try:
+            new_element[-len(temp_list1[0]):] = temp_list1[i]
+        except:
+            pass
+        new_list.append(new_element)
+    return new_list
+    
+
+def data_from_cell(cell_list): #CHECKED
+    #inputs a list containing type openpyxl.cell.cell [<Cell 'Sheet1'.G1>, <Cell 'Sheet1'.G2>]
+    #outputs the data within each cell ['FIT16617 Time', '04/14/2023 7:00']
+    data_list = []
+    for cell in cell_list:
+        data_list.append(cell.value)
+    return data_list
+
+def data_with_cell(cell_list): #CHECKED
+    #inputs a list containing type openpyxl.cell.cell [<Cell 'Sheet1'.G1>, <Cell 'Sheet1'.G2>]
+    #outputs the data within each cell [[<Cell 'Sheet1'.G1>, 'FIT16617 Time'], [<Cell 'Sheet1'.G2>,'04/14/2023 7:00']]
+    data_list = []
+    for cell in cell_list:
+        data_list.append([cell, cell.value])
+    return data_list
+
+def compare_val(ref_param, ref_workbook, ref_sheet, workbook, sheet):
+    #compare data under the same header (which is distinct within a sheet)
+    #if same value, the cell in the ref_workbook and workbook are both kept in a list
+    #store in type: openpyxl.cell.cell.Cell 
+    ref_list = get_data(ref_workbook, ref_sheet, ref_param)[1]
+    ori_list = get_data(workbook, sheet, ref_param)[1]
+    datebol = input("Is the reference parameter 'date'? (Y/N)")
+    same_list = []
+    for ref_data in ref_list[0]:#for now have distinct, if not distinct, include loop to compare within same sheet first
+        if datebol == 'Y':
+            ref_val = getdate(ref_data.value)[1]
+        else:
+            ref_val = ref_data.value
+        for ori_data in ori_list[0]:
+            if datebol == 'Y':
+                ori_val = getdate(ori_data.value)[1]
+            else:
+                ori_val = ori_data.value
+            if ori_val == ref_val:
+                same_list.append([ori_data, ref_data])
+                break
+    return same_list
+
+def make_unique_param_one_action(workbook, sheet, ref_param): #CHECKED
+    #account for repeated
+    raw_ref_list = []
+    if type(ref_param) == str:
+        raw_ref_list = get_data(workbook, sheet, ref_param)[1]
+    elif type(ref_param) == list: 
+        for ref_param_name in ref_param:
+            raw_ref_list.append(get_data(workbook, sheet, ref_param_name)[1][0])
+    #ref_list is the data to be compared [[A2, A3, A4], [B2, B3, B4]]
+    unique_list = []
+    removed_common_all = []
+    average = []
+    same_data_for_average = []
+    action = input("Do you want to 'R'-remove both, 'F' - keep the former, 'L' - keep the latter or 'A' - obtain the average of the repeated values? ")
+    for ref_data in raw_ref_list:
+        unique_cell = []
+        unique_value = []
+        unique_data = []
+        combined_data = []
+        removed_common = []
+        combined_data = data_with_cell(ref_data)
+        for data in combined_data:
+            
+            if data[1]!=None: #if there are blanks in the excel
+                if data[1] not in unique_value and data[1] not in removed_common:
+                    #unique value is seen
+                    unique_value.append(data[1])
+                    unique_cell.append(data[0])
+                    unique_data.append(data)
+                elif data[1] not in unique_value and data[1] in removed_common:
+                    #repeated value with previously repeated values removed
+                    removed_common.append(data[1])
+                else:
+                    #repeated values
+                    if data[1] not in same_data_for_average:
+                        found_index = unique_value.index(data[1])
+                        if action == "R":
+                            removed_common.extend([data[1], unique_value[found_index]])
+                            unique_value.remove(unique_value[found_index])
+                            unique_cell.remove(unique_cell[found_index])
+                            unique_data.remove(unique_data[found_index])
+                        elif action == "F":
+                            removed_common.append(data[1])
+                        elif action == "L":
+                            removed_common.append(unique_value[found_index])
+                            unique_value.remove(unique_value[found_index])
+                            unique_cell.remove(unique_cell[found_index])
+                            unique_data.remove(unique_data[found_index])
+                            unique_value.append(data[1])
+                            unique_cell.append(data[0])
+                            unique_data.append(data)
+                        elif action == "A":
+                            removed_common.append(data[1])
+                            same_data_for_average.extend([data[1], unique_value[found_index]])
+                            average.extend([data[0], unique_cell[found_index]])
+                    else:
+                        removed_common.append(data[1])
+                        same_data_for_average.append(data[1])
+                        average.append(data[0])
+        unique_list.append(unique_cell)
+        removed_common_all.append(removed_common)
+    return unique_list, average
+
+def make_unique_param_detailed(workbook, sheet, ref_param): #CHECKED
+    #ref_list is the data to be compared [[A2, A3, A4], [B2, B3, B4]]    
+    #account for repeated values in a list
+    #average contains [A1, A2, A3, A5, A6, C1, C2, C3], where elements are openpyxl.cell.cell, A1, A2, A3 are the same values  -> used to find the corresponding sample points to be averaged
+    raw_ref_list = []
+    if type(ref_param) == str:
+        raw_ref_list = get_data(workbook, sheet, ref_param)[1]
+    elif type(ref_param) == list: 
+        for ref_param_name in ref_param:
+            raw_ref_list.append(get_data(workbook, sheet, ref_param_name)[1][0])
+    unique_list = []
+    removed_common_all = []
+    average = []
+    same_data_for_average = []
+    for input_data in raw_ref_list:
+        unique_cell = []
+        unique_value = []
+        unique_data = []
+        combined_data = []
+        removed_common = []
+        combined_data = data_with_cell(input_data)
+        for data in combined_data:
+            if data[1]!=None: #if there are blanks in the excel
+                if data[1] not in unique_value and data[1] not in removed_common:
+                    #unique value is seen
+                    unique_value.append(data[1])
+                    unique_cell.append(data[0])
+                    unique_data.append(data)
+                elif data[1] not in unique_value and data[1] in removed_common:
+                    #repeated value with previously repeated values removed
+                    action = input("Similar values were removed previously, do we keep (K) or remove (R) this?")
+                    if action == "K":
+                       unique_value.append(data[1])
+                       unique_cell.append(data[0])
+                       unique_data.append(data) 
+                    else:
+                       removed_common.append(data[1])
+                else:
+                    #repeated values
+                    if data[1] not in same_data_for_average:
+                        found_index = unique_value.index(data[1])
+                        action = input("Repeated value in "+ str(unique_cell[found_index]) + "and " + str(data[0]) + "\nDo you want to 'R'-remove both, 'F' - keep the former, 'L' - keep the latter or 'A' - obtain the average? ")
+                        if action == "R":
+                            removed_common.extend([data[1], unique_value[found_index]])
+                            unique_value.remove(unique_value[found_index])
+                            unique_cell.remove(unique_cell[found_index])
+                            unique_data.remove(unique_data[found_index])
+                        elif action == "F":
+                            removed_common.append(data[1])
+                        elif action == "L":
+                            removed_common.append(unique_value[found_index])
+                            unique_value.remove(unique_value[found_index])
+                            unique_cell.remove(unique_cell[found_index])
+                            unique_data.remove(unique_data[found_index])
+                            unique_value.append(data[1])
+                            unique_cell.append(data[0])
+                            unique_data.append(data)
+                        elif action == "A":
+                            removed_common.append(data[1])
+                            same_data_for_average.extend([data[1], unique_value[found_index]])
+                            average.extend([data[0], unique_cell[found_index]])
+                    else:
+                        removed_common.append(data[1])
+                        same_data_for_average.append(data[1])
+                        average.append(data[0])
+        unique_list.append(unique_cell)
+        removed_common_all.append(removed_common)
+    return unique_list, average
+
+def compare_val_same_sheet(ref_list): #CHECKED
+    #if same value, the cell is kept in a list
+    #store in type: openpyxl.cell.cell.Cell 
+    temp_list =[]
+    datebol = input("Is the reference parameter 'date'? (Y/N)")
+    for ref in ref_list[0]: #Uses the first list of data as a reference
+        temp_list.append([ref]) 
+        #temp_list = [[A1], [A2], [A3]] 
+    for i in range(1, len(ref_list)):#compares the second and subsequent lists of data to the reference
+        new_temp_list = []
+        for ref in ref_list[i]:
+            if datebol == 'Y':
+                ref_val = getdate(ref.value)[1]
+            else:
+                ref_val = ref.value
+            for same in temp_list:
+                if datebol == 'Y':
+                    same_val = getdate(same[0].value)[1]
+                else:
+                    same_val = same[0].value #same[0].value taken for easy reference (same[1].value is also the same)
+                if same_val == ref_val:
+                    same.append(ref)
+                    new_temp_list.append(same)
+                    break #to reduce computational power
+        temp_list = new_temp_list #update the compared list as the new reference
+    return temp_list
+  
+def compare_val_multi(ref_param, wb_sheet_list):
+    #input wb_sheet_list = [[wb1, s1], [wb2, s2], ...]
+    #compare data under the same header (which is distinct within a sheet)
+    #if same value, the cell in the ref_workbook and workbook are both kept in a list
+    #store in type: openpyxl.cell.cell.Cell 
+    
+    ref_list = get_data(wb_sheet_list[0][0], wb_sheet_list[0][1], ref_param)[1]
+    for wb_sheet in (wb_sheet_list[1:]):
+        final_list = []
+        ori_list = get_data(wb_sheet[0], wb_sheet[1], ref_param)[1]
+        datebol = input("Is the reference parameter 'date'? (Y/N)")
+        for ref_data in ref_list[0]:
+            if datebol == 'Y':
+                if type(ref_data) == list:
+                    try:
+                        ref_val = getdate(ref_data[0].value)[1]
+                    except:
+                        ref_val = ref_data[0].value
+                else:
+                    try:
+                        ref_val = getdate(ref_data.value)[1]
+                    except:
+                        ref_val = ref_data.value
+            else:
+                if type(ref_data) == list:
+                    ref_val = ref_data[0].value
+                else:
+                    ref_val = ref_data.value  
+            for ori_data in ori_list[0]:
+                if datebol == 'Y':
+                    try:
+                        ori_val = getdate(ori_data.value)[1]
+                    except:
+                        ori_val = ori_data.value
+                else:
+                    ori_val = ori_data.value
+                if ori_val == ref_val:
+                    if wb_sheet == wb_sheet_list[1]:
+                        final_list.append([ref_data, ori_data])
+                    else:
+                        temp = ref_data
+                        temp.append(ori_data)
+                        final_list.append(temp)
+                    break #values under header is distinct, so no need to continue if value found
+        ref_list = []
+        ref_list.append(final_list)
+    return final_list
+
+def ext_for_same_pt(ref_list, workbook, sheet, param_name_list):#CHECKED
+    #ref_list should exclude header
+    #param_name_list is a list of parameters (str) to be extracted
+    #Based on the ref_list, the values of multiple parameters for the same sample point are extracted
+    #[[ref data A, param A1, param A2], [ref data B, param B1, param B2]]
+    output = []
+    same_pt_params = []
+    for data in ref_list:
+        for ref_param_name in param_name_list:
+            hori_vert, param_list = get_data(workbook, sheet, ref_param_name)
+            if hori_vert == 0:
+                for ref_param in param_list:
+                    for ref_pt in ref_param:
+                        
+                        if coordinate_from_string(data.coordinate)[0] == coordinate_from_string(ref_pt.coordinate)[0]:
+                            output.append(ref_pt.value)
+                            break
+            else:
+                for ref_param in param_list:
+                    for ref_pt in ref_param:
+                        if coordinate_from_string(data.coordinate)[1] == coordinate_from_string(ref_pt.coordinate)[1]:
+                            output.append(ref_pt.value) 
+                            break
+      
+            if type(data.value) == datetime.datetime:
+                ref_val = data.value.strftime("%d/%m/%Y, %H:%M:%S")
+            else:
+                ref_val = data.value
+        output.insert(0, ref_val)
+        same_pt_params.append(output)              
+        output = []
+    return same_pt_params
+    #OUTPUT same_pt_params = [['02/02/2024, 00:00:00', 2, 20],['02/02/2024, 00:00:00', 3, 21],['02/02/2024, 00:00:00', 5, 23],['06/02/2024, 00:00:00', 4, 16],['06/02/2024, 00:00:00', 5, 15], ['09/02/2024, 00:00:00', 5, 10],['09/02/2024, 00:00:00', 1, 11]]
+
+    
+def get_average(average_list, workbook, sheet, param_name_list):#CHECKED
+    #outputs[['04/14/2023 7:01', 15.95997906, 2.0], ['04/14/2023 7:14', 17.0815773, 9.5]..] 
+    data = ext_for_same_pt(average_list, workbook, sheet, param_name_list)
+    #data = [[A1, param B1, param C1], [A2, param B2, param C2]...]
+    number = 0
+    next_param = 0
+    output = []
+    
+    addition = 0
+    for i in range(1,len(data[0])):
+        distinct_no = 0
+        same_ref = data[0][0]
+        prev_n = 0
+        for n, params_for_same_pt in enumerate(data):
+            if params_for_same_pt[0] != same_ref:
+                number = n - prev_n
+                ave_val = addition / number
+                if next_param != 1:
+                    output.append([same_ref, ave_val])
+                else:
+                    output[distinct_no ].append(ave_val)
+                    distinct_no = distinct_no + 1
+                    
+                same_ref = params_for_same_pt[0]
+                prev_n = n
+                addition = 0
+            if params_for_same_pt[0] == same_ref:
+                addition = params_for_same_pt[i] + addition
+                if n == (len(data) - 1): #to account for the last value in data
+                    number = len(data) - prev_n
+                    ave_val = addition / number
+                    if next_param != 1:
+                        output.append([same_ref, ave_val])
+                    else:
+                        output[distinct_no ].append(ave_val)
+                        distinct_no = distinct_no + 1
+                    addition = 0
+            
+        next_param = 1
+    return output  
+
+def separate_list (input_list): #CHECKED
+    #input_list = [[A1, B1, C2], [A2, B2, C3]...]
+    #output = [[A1, A2..], [B1, B2..], [C2, C3..]]
+    output = []
+    for i in range(len(input_list[0])):
+        temp0 = []
+        for val in input_list:
+            temp0.append(val[i])
+        output.append(temp0)
+    return output
+
+def write_ave(datasheet, date_col):
+    newdate = None
+    date = None
+    flowrate = []
+    row = []
+    for cell in datasheet[date_col]:
+        if type(cell.value) == datetime:
+                date = cell.value.strftime("%m/%d/%Y")
+        elif cell.value.count("/")==2 and cell.value.count(":")==1:
+               date = str(cell.value[3:5]) + "/" + str(cell.value[:2]) + "/" + str(cell.value[6:10])
+        if cell.value!=None and date!=None:
+            flowrate.append(datasheet[cell.coordinate.replace(date_col, chr(ord(date_col) + 1))].value)
+            if date != newdate:
+                newdate = date
+                average = sum(flowrate)/len(flowrate)
+                row.append([date,average])
+    return row
+
+def write_ave_gen(datasheet, ref_col): #Cannot have any None data
+    newref = datasheet[ref_col][1].value
+    ref = None
+    flowrate = []
+    row = []
+    data = 0
+    for cell in datasheet[ref_col][1:]:#Exclude the header
+        if type(cell.value) == datetime:
+                ref = cell.value.strftime("%d/%m/%Y %H:%M:%S")
+        else:
+               ref = cell.value
+        if newref!=None:
+            if ref != newref:
+                average = sum(flowrate)/len(flowrate)
+                row.append([newref,average])
+                newref = ref
+                flowrate = []
+            data = datasheet[cell.coordinate.replace(ref_col, chr(ord(ref_col) + 1))].value
+            flowrate.append(data)
+    return row
+  
+def keep_if_specific_val (data_list, param_index_list, value_list):
+    #data_list is after it has been extracted, with data in vertical form [[para1a, para2a, para3a], [para1b, para2, para3b]...]
+    #the param_index_list must correspond to index in the value_list
+    for data in data_list[:]:#Used [:] which makes a copy, as python has an inbuilt function that skips elements in a for loop if the list is altered
+        for i, param_index in enumerate(param_index_list):
+            if data[param_index] != value_list[i]:
+                data_list.remove(data)
+                break #if already removed by one criteria, 'removing again' would cause an error
+            else:
+                pass
+    return data_list
+
+
+def save_file(values):
+    save_bool = input("Type '0' if you want to save data into a new file, else type '1': \n")
+    if save_bool == '0': #create new file
+        Wb_test = Workbook()
+        sheet = Wb_test.active
+        for i in range(len(values)):
+            sheet.append(values[i])
+        sheet.title = input("Insert sheet name")
+        Wb_test.save(input("Insert name of excel") + ".xlsx")
+    else:
+        directory = input("Insert the directory of file to be used: \n")
+        file = load_workbook(directory)
+        sheet = input("Insert sheet name: \n")
+        file.active = file[sheet]
+        file0 = file.active
+        for i in range(len(values)):
+            file0.append(values[i])
+        file.save(directory)
+        
+def extract_data(input_list):
+    for x, value in enumerate(input_list):
+        for y, element in enumerate(value):
+            if type(element) == openpyxl.cell.cell.Cell:
+                input_list[x][y] = element.value
+            else:
+                pass
+    return input_list
+
+
+
+#Obtain inputs
+wb_list = [] #[load_workbook(C:/1), load_workbook(C:/2)]
+filename_list = [] #[wb1, wb2]
+sheet_list = [] 
+filesheet_list = [] #[[wb1s1, wb1s2], [wb2s1, wb2s2]]
+print("This program helps you extract specific parameters from the same sampling point and filters the data. \nPress 'enter' whenever you have finished an input. When you have no more inputs, type 'done'")
+    
+directory = input("Insert the directory of raw data file: \n")
+while directory != 'done':
+    wb = load_workbook(directory)
+    wb_list.append(wb)
+    filename_list.append(Path(directory).stem) #extracts name of file from directory
+    directory = input()
+
+#for file in filename_list:
+#    sheet_list = get_input("Insert the sheet names to be analysed in " + file + ": ")
+#    filesheet_list.append(sheet_list)
+#    sheet_list = []
+print("These are the names of raw data files you typed: \n")
+print(*filename_list, sep = ", ")  #print out values in list and separate with comma
+instruction = input("Which of the following operations would you like to perform? \nA. Extract a data row/column \nB. Filter common values under a header and extract data from other parameters \nC. Extracting data for the same sample point (reference data must be unique)\nD. Filter data w.r.t a specific parameter (only after 'A' is completed)\n")
+
+output = []
+while instruction!='done':
+    new_output = []
+    
+    if instruction == 'A':#Extract a data row/column
+        filename = input("Type the name of file for extraction: \n")
+        workbook = wb_list[filename_list.index(filename)]
+        sheet_name = input(f"Insert the sheet names to be analysed in {filename} : ")
+        search_list = get_input("Type the header for data extraction: ")
+        for search_value in search_list:
+            raw_output = get_data(workbook, sheet_name, search_value)[1]
+            raw_output = separate_list(raw_output)
+            new_output = extract_data(raw_output) #in case output contain openpyxl.cell.cell.Cell, they will be converted into strings for appending into excel
+            if output != []:
+                output = merge_same_index(output, new_output)
+            else: 
+                output = new_output
+        
+    elif instruction == 'B':#Filter common values, extracting other parameter data
+        filename = input("Type the name of file for extraction: \n")
+        workbook = wb_list[filename_list.index(filename)]
+        sheet_name = input(f"Insert the sheet names to be analysed in {filename} : \n")
+        ref_param = input("Type the header of parameter to be made unique: \n")
+        action = input("Do you want \nA. to execute the same action for all common values or \nB. to customize? \n")
+        if action == 'A':
+            ref_list, average_list = make_unique_param_one_action(workbook, sheet_name, ref_param)
+        elif action == 'B':
+            ref_list, average_list = make_unique_param_detailed(workbook, sheet_name, ref_param)
+        param_name_list = get_input("Enter the parameter headers of data to be extracted: \n")
+        if average_list == []:
+            new_output = ext_for_same_pt(ref_list[0], workbook, sheet_name, param_name_list)
+        else:
+            new_output = ext_for_same_pt(ref_list[0], workbook, sheet_name, param_name_list)
+            averages = get_average(average_list, workbook, sheet_name, param_name_list)
+            for average in averages:
+                for i in range(len(new_output)):
+                    if average[0] == new_output[i][0]:
+                        new_output[i] = average
+                        break
+        if output != []:
+            output = merge_same_index(output, new_output)
+        else:
+            output = new_output
+            
+    elif instruction == 'C':#Extracting data for the same sample point
+        wb_sheet_list = []
+        Filename_list = []
+        ref_param = input("Type the header of the reference parameter demarcating the same sampling point: \n")
+        print("\nEnter the workbook and their associated sheets for comparing values. Type 'done' otherwise.")
+        filename = input("Type the name of file for extraction: \n")
+        Filename_list.append(filename)
+        sheet_name = input(f"Insert the sheet names to be analysed in {filename} : \n")
+        while filename != 'done':
+            workbook = wb_list[filename_list.index(filename)]
+            wb_sheet_list.append([workbook, sheet_name])
+            filename = input("Type the name of file for extraction: \n")
+            Filename_list.append(filename)
+            sheet_name = input(f"Insert the sheet names to be analysed in {filename} : \n")
+        all_ref_list = compare_val_multi(ref_param, wb_sheet_list)
+        split = separate_list(all_ref_list)
+       # split.reverse()
+        for i, ref_list in enumerate(split):
+            param_name_list = get_input(f"Type your parameter names for extraction in {wb_sheet_list[i][1]} in {Filename_list[i]}: \n")
+            data = ext_for_same_pt(ref_list, wb_sheet_list[i][0], wb_sheet_list[i][1], param_name_list)
+            if new_output == []:
+                new_output = data
+            else:
+                new_output = merge_same_index(data, new_output)
+        if output != []:
+            output = merge_same_index(output, new_output)
+        else:
+            output = new_output
+            
+    elif instruction == 'D':#Filter data w.r.t a specific parameter
+        param_list = get_input("Type your parameter names for filtering: ")
+        value_list = get_input("Type the values of the corresponding parameters to be kept: ")
+        param_index_list = []
+        for param in param_list:
+            param_index_list.append(output[0].index(param))
+        new_output = keep_if_specific_val(output[1:], param_index_list, value_list)
+        new_output.insert(0, output[0]) 
+        output = new_output
+    
+    instruction = input("Type 'done' if you want to save data, else continue with 'A/B/C/D': \n")
+
+save_file(output)                  
