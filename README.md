@@ -56,21 +56,34 @@ Take the raw data files as Book1Sheet1, Book2Sheet1 and Book2Sheet2 and 3 tasks:
 ### Raw data files
 <p align = "center">
     <img src="https://github.com/Traceytyh/Excelpython/assets/107814829/2c545f71-df4c-4ef0-a4cd-d17daaa267fd">
-    <em>Book1Sheet1</em>
+    <em><br/>Book1Sheet1<br/></em>
+    <img src = "https://github.com/Traceytyh/Excelpython/assets/107814829/2cdbc88d-cd43-4b90-9a3b-674c3f8636b5">
+    <em> <br/> Book2Sheet1<br/></em>
+    <img src = "https://github.com/Traceytyh/Excelpython/assets/107814829/ea82541e-5cbb-48f6-a076-2190b88f717c">
+    <em><br/>Book2Sheet2<br/></em>
 </p>
-![Book2Sheet1](https://github.com/Traceytyh/Excelpython/assets/107814829/2cdbc88d-cd43-4b90-9a3b-674c3f8636b5)
-![Book2Sheet2](https://github.com/Traceytyh/Excelpython/assets/107814829/ea82541e-5cbb-48f6-a076-2190b88f717c)
 
 ### Task 1
-![Task1console](https://github.com/Traceytyh/Excelpython/assets/107814829/ff24498e-8498-49a5-ae92-4032d91988c5)
-![Task1output](https://github.com/Traceytyh/Excelpython/assets/107814829/5e5cef01-ee2b-4741-a98d-866c05f0f230)
+<p align = "center">
+    <img src = "https://github.com/Traceytyh/Excelpython/assets/107814829/ff24498e-8498-49a5-ae92-4032d91988c5">
+    <em><br/>Console Instructions<br/></em>
+    <img src = "https://github.com/Traceytyh/Excelpython/assets/107814829/5e5cef01-ee2b-4741-a98d-866c05f0f230">
+    <em><br/>Task1Output<br/></em>
+</p>
 For the first set of repeated values (11/1/2022), the former values were kept, giving parameter 5 and 6 the values 8.1 and 57. For the next set (14/1/2022), the average was obtained, giving 14.6 and 63.5 (including the one in row 21). For 21/1/2022, the row 20 was being kept, giving 20.1 and 69.
+
 ### Task 2
-![Task2console](https://github.com/Traceytyh/Excelpython/assets/107814829/408d491a-93ed-497d-beb8-a949e11549c0)
-![Task2output](https://github.com/Traceytyh/Excelpython/assets/107814829/3404110e-7716-4dd9-ba66-ba8e06a76849)
-
+<p align = "center">
+    <img src = "https://github.com/Traceytyh/Excelpython/assets/107814829/408d491a-93ed-497d-beb8-a949e11549c0">
+    <em> <br/> Console Instructions<br/></em>
+    <img src = "https://github.com/Traceytyh/Excelpython/assets/107814829/3404110e-7716-4dd9-ba66-ba8e06a76849">
+    <em><br/>Task2Output<br/></em>
+</p>
+    
 ### Task 3
-![Task3console](https://github.com/Traceytyh/Excelpython/assets/107814829/c5bc26d3-8c14-458f-af78-172adc1521c0)
-![Task3output](https://github.com/Traceytyh/Excelpython/assets/107814829/85626268-7de8-4094-a6a3-73158ab47aa1)
-
-
+<p align = "center">
+    <img src = "https://github.com/Traceytyh/Excelpython/assets/107814829/c5bc26d3-8c14-458f-af78-172adc1521c0">
+    <em><br/>Console Instructions<br/></em>
+    <img src = "https://github.com/Traceytyh/Excelpython/assets/107814829/85626268-7de8-4094-a6a3-73158ab47aa1">
+    <em><br/>Task3Output<br/></em>
+</p>
